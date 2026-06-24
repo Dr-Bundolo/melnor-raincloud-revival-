@@ -30,6 +30,13 @@ timestamp as authoritative once you start sending it periodically — don't let 
 
 **Both fixes have been running in production for several days** across manual, direct API, and fully scheduled/unattended runs, with the RF link holding for many consecutive hours where it previously failed within 1-2.
 
+## The actual code
+
+- [`web-js-timestamp-fix.js`](web-js-timestamp-fix.js) — the one-line fix for the RF pairing drop, with notes on the related cleanup needed elsewhere in the file
+- [`blynk-bridge-fixes.py`](blynk-bridge-fixes.py) — a full bridge script incorporating the keepalive timing fix, an early-shutoff watchdog, and Blynk push notifications for failures
+
+Replace the placeholder values at the top of the Python file (`YOUR_BLYNK_AUTH_TOKEN`, your pump controller's IP) with your own before running it.
+
 ## Credit
 
 This builds entirely on the reverse-engineering work of jpjodoin and FreshXOpenSource — without their projects, none of this would be possible. This guide just documents some additional issues found running one of these setups long-term, unattended, at a remote property.
