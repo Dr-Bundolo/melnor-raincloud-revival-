@@ -15,6 +15,14 @@ You don't need to reverse-engineer anything yourself — this groundwork is alre
 
 Both take the same basic approach: a local server on your network impersonates Melnor's cloud, your router/Pi redirects the Control Unit's DNS lookups to that local server instead of the real internet, and the CU continues operating exactly as designed, just talking to your Pi instead.
 
+## Getting started
+
+1. **Pick one of the two projects above and get it running first**, following that project's own setup instructions. Don't skip this — the fixes below are patches on top of a working base, not a replacement for one. `melnor_decloudify` is the one this guide's fixes were built and tested against.
+2. Confirm your Control Unit is talking to your Pi and you can trigger a valve manually before applying anything from this guide.
+3. Once that's working, apply the fix in `web-js-timestamp-fix.js` to your copy of `web.js`, and/or use `blynk-bridge-fixes.py` as a reference for your own bridge script.
+
+**Note on `sunshower`:** the specific file/function names in the fix below match `melnor_decloudify`'s code. If you're using `sunshower` instead, the underlying cause (the CU needing a periodic timestamp update, not just one at initial connection) may still apply, but you'll need to find the equivalent spot in that project's code yourself — the patch as written won't drop in directly.
+
 ## What you'll need
 
 - A Raspberry Pi (even low-power models work — this has been running reliably on a Pi Zero W)
@@ -23,10 +31,11 @@ Both take the same basic approach: a local server on your network impersonates M
 
 ## Known issues and fixes (found during real-world deployment)
 
-**RF pairing silently drops after 1-2 hours.** The Control Unit shows "online" the entire time and the WebSocket connection stays healthy, but commands stop actually reaching the valve. Root cause: the server only sends a timestamp sync to the CU once, during initial connection — never again. The CU's firmware appears to depend on periodic timestamp updates to keep its RF link with the valve unit alive, separate from the WebSocket connection itself. Fix: send a timestamp update every ~60 seconds, alongside any periodic ping/keepalive logic already in place.
+**RF pairing silently drops after 1-2 hours.** (Runs on the Raspberry Pi, in the Node.js decloud server's `web.js` file.) The Control Unit shows "online" the entire time and the WebSocket connection stays healthy, but commands stop actually reaching the valve. Root cause: the server's `checkTimeout()` function only sends a timestamp sync to the CU once, during initial connection — never again. The CU's firmware appears to depend on periodic timestamp updates to keep its RF link with the valve unit alive, separate from the WebSocket connection itself.
 
-**If you're also bridging to a separate pump or smart-home platform:** make sure your own code treats your Pi's
-timestamp as authoritative once you start sending it periodically — don't let the CU's own reported clock overwrite it, or you can get desynced valve-duration tracking (a pump might shut off before the valve's commanded duration actually elapses, or vice versa).
+**Fix:** see [`web-js-timestamp-fix.js`](web-js-timestamp-fix.js) below for the exact corrected function and the related cleanup it requires elsewhere in `web.js`.
+
+**If you're also bridging to a separate pump or smart-home platform** (this part runs on the Pi too, in a separate Python bridge script): make sure your own code treats your Pi's timestamp as authoritative once you start sending it periodically — don't let the CU's own reported clock overwrite it, or you can get desynced valve-duration tracking (a pump might shut off before the valve's commanded duration actually elapses, or vice versa). See [`blynk-bridge-fixes.py`](blynk-bridge-fixes.py) below for a working example, including a watchdog for this exact failure mode.
 
 **Both fixes have been running in production for several days** across manual, direct API, and fully scheduled/unattended runs, with the RF link holding for many consecutive hours where it previously failed within 1-2.
 
